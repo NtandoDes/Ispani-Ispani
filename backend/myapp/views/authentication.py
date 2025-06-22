@@ -4,7 +4,7 @@ from django.utils import timezone
 from datetime import timedelta
 from django.core.cache import cache
 import uuid
-import stripe
+
 from django.db.models import Q
 
 
