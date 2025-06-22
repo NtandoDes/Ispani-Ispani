@@ -1,6 +1,6 @@
 from django.utils.crypto import get_random_string
 from rest_framework import serializers
-from ..models import EventComment, EventMedia, EventParticipant, EventTag
+from ..models import EventComment, EventMedia, EventParticipant, EventTag, Event
 from .authentication import UserSerializer
 
 
