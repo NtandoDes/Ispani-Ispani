@@ -1,5 +1,4 @@
 from django.utils.crypto import get_random_string
-from stripe import Event
 from rest_framework import serializers
 from ..models import EventComment, EventMedia, EventParticipant, EventTag
 from .authentication import UserSerializer
