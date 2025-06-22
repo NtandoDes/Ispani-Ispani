@@ -39,6 +39,13 @@ FRONTEND_URL = config('FRONTEND_URL', default="http://127.0.0.1:65443")
 DEBUG = config('DEBUG', default=True, cast=bool)
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='', cast=lambda v: [s.strip() for s in v.split(',') if s.strip()])
+ALLOWED_HOSTS = [
+    'ispani-ispani-vrdr.onrender.com',
+    'localhost',
+    '127.0.0.1',
+    # add any other domains you use
+]
+
 
 # Application definition
 
