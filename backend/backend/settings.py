@@ -200,6 +200,7 @@ SOCIALACCOUNT_LOGIN_ON_GET= True
 # Additional allauth settings
 ACCOUNT_LOGIN_METHODS = {'email'}
 ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']
+ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_EMAIL_VERIFICATION = 'mandatory'  # or 'optional' or 'none'
 LOGIN_REDIRECT_URL = '/'  # Where to redirect after successful login
 
