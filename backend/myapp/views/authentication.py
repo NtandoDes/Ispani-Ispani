@@ -585,45 +585,142 @@ class ForgotPasswordView(APIView):
         uid = urlsafe_base64_encode(force_bytes(user.pk))
         token = default_token_generator.make_token(user)
 
-        # Construct frontend URL
-        reset_url = f"{getattr(settings, 'FRONTEND_URL', 'http://127.0.0.1:65443/')}/reset-password?uid={uid}&token={token}"
+        # Store in cache for faster validation
+        cache_key = f"password_reset_{uid}"
+        cache.set(cache_key, {
+            'token': token,
+            'email': user.email,
+            'user_id': user.pk
+        }, timeout=3600 * 24)  # Store for 24 hours
 
+        # Construct reset URL
+        reset_url = f"{settings.FRONTEND_URL}/resetpassword?uid={uid}&token={token}"
 
-        # Send the reset email
-        send_mail(
-            subject="Reset Your Password",
-            message=f"Click the link below to reset your password:\n{reset_url}",
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[email],
-        )
+        # Email subject and message
+        subject = "Reset Your Password"
+        message = f"""
+        Hello {user.username},
+        
+        You're receiving this email because you requested a password reset for your account.
+        
+        Please click the link below to reset your password:
+        {reset_url}
+        
+        If you didn't request this, please ignore this email.
+        
+        Thanks,
+        Your Ispani Team
+        """
 
-        return Response({"message": "Password reset link sent to your email."}, status=status.HTTP_200_OK)
+        # Send the email
+        try:
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[email],
+                fail_silently=False,
+            )
+            return Response({"message": "Password reset link sent to your email."}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(
+                {"error": f"Failed to send email: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 
 class ResetPasswordView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        uidb64 = request.data.get("uid")
-        token = request.data.get("token")
-        new_password = request.data.get("new_password")
-
-        if not uidb64 or not token or not new_password:
-            return Response({"error": "All fields are required."}, status=status.HTTP_400_BAD_REQUEST)
-
         try:
-            uid = force_str(urlsafe_base64_decode(uidb64))
-            user = CustomUser.objects.get(pk=uid)
-        except (TypeError, ValueError, OverflowError, CustomUser.DoesNotExist):
-            return Response({"error": "Invalid reset link."}, status=status.HTTP_400_BAD_REQUEST)
+            uidb64 = request.data.get("uid")
+            token = request.data.get("token")
+            new_password = request.data.get("new_password")
+            confirm_password = request.data.get("confirm_password")
 
-        if not default_token_generator.check_token(user, token):
-            return Response({"error": "Invalid or expired token."}, status=status.HTTP_400_BAD_REQUEST)
+            if not all([uidb64, token, new_password, confirm_password]):
+                return Response(
+                    {"error": "Missing required fields."}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
-        user.set_password(new_password)
-        user.save()
+            if new_password != confirm_password:
+                return Response(
+                    {"error": "Passwords do not match."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
-        return Response({"message": "Password has been reset successfully."}, status=status.HTTP_200_OK)
+            # Decode uid first
+            try:
+                uid = force_str(urlsafe_base64_decode(uidb64))
+                user = CustomUser.objects.get(pk=uid)
+            except (TypeError, ValueError, OverflowError, CustomUser.DoesNotExist):
+                return Response(
+                    {"error": "Invalid user identifier."}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
+            # Check cache first
+            cache_key = f"password_reset_{uidb64}"
+            cached_data = cache.get(cache_key)
+            
+            if cached_data and cached_data['token'] == token:
+                # Cache is valid, proceed
+                pass
+            else:
+                # Fall back to token generator if cache is missing
+                if not default_token_generator.check_token(user, token):
+                    return Response(
+                        {"error": "Invalid or expired token."}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+            # All validations passed - reset password
+            user.set_password(new_password)
+            user.save()
+            
+            # Clear the reset token from cache
+            cache.delete(cache_key)
+
+            # Send confirmation email
+            self._send_password_changed_email(user.email)
+
+            return Response(
+                {"message": "Password has been reset successfully."}, 
+                status=status.HTTP_200_OK
+            )
+
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    def _send_password_changed_email(self, email):
+        """Helper method to send password changed confirmation email"""
+        subject = "Your Password Has Been Changed"
+        message = f"""
+        <html>
+            <body>
+                <h2>Password Changed Successfully</h2>
+                <p>This is a confirmation that the password for your account {email} has been changed.</p>
+                <p>If you did not make this change, please contact our support team immediately.</p>
+                <br>
+                <p>Best regards,</p>
+                <p>Your Ispani Team</p>
+            </body>
+        </html>
+        """
+        
+        send_mail(
+            subject=subject,
+            message="",  # Empty message since we're using html_message
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=False,
+            html_message=message,
+        )
 
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
