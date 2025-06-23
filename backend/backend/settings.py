@@ -193,6 +193,15 @@ AUTHENTICATION_BACKENDS = [
     'allauth.account.auth_backends.AuthenticationBackend',
 ]
 
+# Email Configuration
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='sthembiso.ikworx@gmail.com')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='qbcg isue zear bhqi')  # Use App Password if 2FA is enabled
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='sthembiso.ikworx@gmail.com')
+
 SITE_ID = 1  # Required by allauth
 
 # Provider specific settings
