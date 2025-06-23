@@ -254,13 +254,20 @@ class SignUpView(APIView):
         username = request.data.get("username")
 
         if not email or not password or not username:
-            return Response({"error": "Email, password and username are required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Email, password and username are required"}, 
+                          status=status.HTTP_400_BAD_REQUEST)
 
         if CustomUser.objects.filter(email=email).exists():
-            return Response({"error": "Email already in use"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Email already in use"}, 
+                          status=status.HTTP_400_BAD_REQUEST)
 
         # Generate a 6-digit OTP
         otp = str(uuid.uuid4().int)[:6]
+
+        # Display OTP in terminal for development purposes
+        print(f"\n\n{'='*50}")
+        print(f"OTP for {email}: {otp}")
+        print(f"{'='*50}\n\n")
         
         # Store user registration data and OTP in cache
         cache.set(f"otp_{email}", {
@@ -269,15 +276,36 @@ class SignUpView(APIView):
             "username": username
         }, timeout=3600)  # OTP valid for 1 hour
 
-        # Send the OTP via email
-        send_mail(
-            subject="Your OTP Code",
-            message=f"Use this OTP to continue your registration: {otp}",
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[email],
-        )
+        # Send the OTP via email with improved template
+        subject = "Your Verification Code"
+        message = f"""
+        Hello {username},
+        
+        Thank you for registering with us. Please use the following verification code 
+        to complete your registration:
+        
+        Verification Code: {otp}
+        
+        This code will expire in 1 hour. If you didn't request this, please ignore this email.
+        
+        Best regards,
+        Your Ispani Team
+        """
 
-        return Response({"message": "OTP sent to email"}, status=status.HTTP_200_OK)
+        try:
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[email],
+                fail_silently=False,
+            )
+            return Response({"message": "Verification code sent to your email"}, 
+                          status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": f"Failed to send email: {str(e)}"}, 
+                          status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class VerifyOTPView(APIView):
     permission_classes = [AllowAny]
@@ -287,17 +315,20 @@ class VerifyOTPView(APIView):
         otp = request.data.get("otp")
         
         if not email or not otp:
-            return Response({"error": "Email and OTP are required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Email and OTP are required"}, 
+                          status=status.HTTP_400_BAD_REQUEST)
         
         # Retrieve stored data from cache
         cached_data = cache.get(f"otp_{email}")
         
         if not cached_data:
-            return Response({"error": "OTP has expired or email is invalid"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "OTP has expired or email is invalid"}, 
+                          status=status.HTTP_400_BAD_REQUEST)
         
         # Verify OTP
         if cached_data["otp"] != otp:
-            return Response({"error": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Invalid verification code"}, 
+                          status=status.HTTP_400_BAD_REQUEST)
         
         # OTP verified, generate temp token for registration completion
         temp_token = str(uuid.uuid4())
@@ -314,10 +345,9 @@ class VerifyOTPView(APIView):
         cache.delete(f"otp_{email}")
 
         return Response({
-            "message": "OTP verified successfully. Ready to complete registration",
+            "message": "Email verified successfully. Please complete your registration",
             "temp_token": temp_token,
         }, status=status.HTTP_200_OK)
-
 
 def assign_user_to_dynamic_group(user, role, city, institution=None, qualification=None):
     """Create and assign user to dynamic groups based on their role and location"""
