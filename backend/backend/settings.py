@@ -33,7 +33,7 @@ ACCOUNT_SIGNUP_FIELDS = {
     'email': {'required': True},
 }
 
-FRONTEND_URL = 'https://ispani.net/'
+FRONTEND_URL = 'https://ispani.net'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=True, cast=bool)
