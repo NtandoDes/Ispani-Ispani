@@ -598,8 +598,9 @@ class ForgotPasswordView(APIView):
             'user_id': user.pk
         }, timeout=3600 * 24)  # Store for 24 hours
 
-        # Construct reset URL
-        reset_url = f"{settings.FRONTEND_URL}/resetpassword?uid={uid}&token={token}"
+        # Construct reset URL - ensure proper URL joining
+        reset_path = f"/resetpassword?uid={uid}&token={token}"
+        reset_url = f"{settings.FRONTEND_URL.rstrip('/')}{reset_path}"
 
         # Email subject and message
         subject = "Reset Your Password"
@@ -632,7 +633,6 @@ class ForgotPasswordView(APIView):
                 {"error": f"Failed to send email: {str(e)}"}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
 
 class ResetPasswordView(APIView):
     permission_classes = [AllowAny]
