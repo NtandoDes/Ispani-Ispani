@@ -195,12 +195,13 @@ AUTHENTICATION_BACKENDS = [
 
 # Email Configuration
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='xrlab2020@gmail.com')
-EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='yzxy eirk aipj cphw')  # Use App Password if 2FA is enabled
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='xrlab2020@gmail.com')
+EMAIL_HOST = 'mail.ispani.net'  # Or your hosting provider's SMTP server
+EMAIL_PORT = 587  # Commonly 587 for TLS, 465 for SSL
+EMAIL_USE_TLS = True  # False if using SSL (port 465)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='info@ispani.net')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='Oculus@2025')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='info@ispani.net')
+SERVER_EMAIL = 'info@ispani.net'  # For admin emails
 
 SITE_ID = 1  # Required by allauth
 
