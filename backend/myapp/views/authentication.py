@@ -420,8 +420,14 @@ class CompleteRegistrationView(APIView):
             if CustomUser.objects.filter(email=email).exists():
                 return Response({'error': 'Email already registered.'}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Get roles as a list (could be multiple roles selected)
+            # Get roles - handle both string and list formats
             roles = request.data.get("roles", [])
+            if isinstance(roles, str):
+                try:
+                    roles = json.loads(roles)  # Try to parse if it's a JSON string
+                except json.JSONDecodeError:
+                    roles = [roles]  # Treat as single role if not JSON
+
             if not roles:
                 return Response({"error": "Missing roles"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -430,7 +436,6 @@ class CompleteRegistrationView(APIView):
             
             if invalid_roles:
                 return Response({"error": f"Invalid roles: {', '.join(invalid_roles)}"}, status=status.HTTP_400_BAD_REQUEST)
-
             user = CustomUser.objects.create_user(email=email, username=username, password=password, roles=roles)
             user.save()
 
